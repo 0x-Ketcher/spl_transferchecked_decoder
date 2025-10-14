@@ -45,8 +45,7 @@
   <div class="card grid">
     <div>
       <label for="hex">Instruction Data (hex)</label>
-      <textarea id="hex" rows="3" placeholder="e.g. 0c40420f000000000006 or 0c 40 42 0f 00 00 00 00 00 00 06"></textarea>
-      <div class="muted">Tip: you can include or omit <code>0x</code> and spaces.</div>
+      <textarea id="hex" rows="3" placeholder="e.g. 0c40420f000000000006"></textarea>
     </div>
     <div class="row">
       <div>
@@ -94,7 +93,6 @@ function readU64LE(bytes, offset){
 }
 function pow10(n){ let r=1n; for(let i=0;i<n;i++) r*=10n; return r; }
 function humanAsStrings(n, decimals){
-  // returns [trimmed, fixed] strings
   const scale = pow10(decimals);
   const whole = n / scale;
   const frac = n % scale;
@@ -102,7 +100,6 @@ function humanAsStrings(n, decimals){
   if (decimals > 0){
     fixed += "." + frac.toString().padStart(decimals, '0');
   }
-  // trimmed version removes trailing zeros in fractional part
   let trimmed = fixed;
   if (decimals > 0) {
     trimmed = fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
@@ -136,12 +133,10 @@ document.getElementById('decode').addEventListener('click', () => {
     const amountLE = readU64LE(bytes, 1);
     const [humanTrim, humanFixed] = humanAsStrings(amountLE, decimals);
 
-    // Human standout
     humanBig.textContent = addCommasNumericString(humanTrim);
     humanSub.textContent = "Fixed ("+decimals+" dp): " + addCommasNumericString(humanFixed);
     humanBox.style.display = 'block';
 
-    // Key values
     const lines = [];
     lines.push("Bytes ("+bytes.length+"): " + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(' '));
     lines.push("Opcode (byte 0): " + opcode + (opcode===12 ? " ✅ (TransferChecked)" : " ⚠️ not 12; ensure this is TransferChecked data"));
