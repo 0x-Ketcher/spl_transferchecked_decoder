@@ -1,0 +1,107 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SPL Token TransferChecked Decoder (offline)</title>
+<style>
+  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; line-height: 1.4; }
+  h1 { font-size: 20px; margin-bottom: 8px; }
+  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; max-width: 860px; }
+  label { font-weight: 600; }
+  textarea, input { width: 100%; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 14px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .muted { color: #6b7280; font-size: 13px; }
+  .out { background: #f9fafb; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef2ff; color:#3730a3; font-size: 12px; margin-left: 6px; }
+  .ok { color: #065f46; }
+  .err { color: #991b1b; }
+  button { padding: 10px 14px; border-radius: 10px; border: 1px solid #e5e7eb; background: #111827; color: white; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .grid { display: grid; gap: 10px; }
+  .small { font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>SPL Token <code>TransferChecked</code> Decoder <span class="pill">offline</span></h1>
+  <p class="muted">Paste the instruction data bytes (hex). This decodes <code>TransferChecked</code> (opcode = 12) into raw amount, decimals, and human amount.</p>
+  <div class="card grid">
+    <div>
+      <label for="hex">Instruction Data (hex)</label>
+      <textarea id="hex" rows="3" placeholder="e.g. 0c40420f000000000006 or 0c 40 42 0f 00 00 00 00 00 00 06"></textarea>
+      <div class="small muted">Tips: you can include or omit <code>0x</code> and spaces.</div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="forceDecimals">Force decimals (optional)</label>
+        <input id="forceDecimals" type="number" min="0" max="36" placeholder="Leave empty to use last byte from data" />
+      </div>
+      <div>
+        <label>&nbsp;</label><br/>
+        <button id="decode">Decode</button>
+      </div>
+    </div>
+    <div id="result" class="out"></div>
+  </div>
+
+<script>
+function cleanHex(s){
+  return (s||"").toLowerCase().replace(/0x/g,'').replace(/[^0-9a-f]/g,'');
+}
+
+function hexToBytes(hex) {
+  if (hex.length % 2 !== 0) throw new Error("Hex length must be even (got "+hex.length+")");
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i/2] = parseInt(hex.slice(i, i+2), 16);
+  }
+  return bytes;
+}
+
+function readU64LE(bytes, offset){
+  if (offset + 8 > bytes.length) throw new Error("Not enough bytes to read u64");
+  let n = 0n;
+  for (let i=0;i<8;i++){
+    n |= BigInt(bytes[offset+i]) << BigInt(8*i);
+  }
+  return n;
+}
+
+function pow10(n){ let r=1n; for(let i=0;i<n;i++) r*=10n; return r; }
+
+function formatHuman(n, decimals){
+  const scale = pow10(decimals);
+  const whole = n / scale;
+  const frac = n % scale;
+  const fracStr = frac.toString().padStart(decimals, '0').replace(/0+$/,'');
+  return fracStr.length ? `${whole}.${fracStr}` : whole.toString();
+}
+
+document.getElementById('decode').addEventListener('click', () => {
+  const out = document.getElementById('result');
+  try{
+    const cleaned = cleanHex(document.getElementById('hex').value);
+    if (!cleaned) throw new Error("Paste hex data first.");
+    const bytes = hexToBytes(cleaned);
+
+    const opcode = bytes[0];
+    const forced = document.getElementById('forceDecimals').value;
+    const decimals = forced === "" ? bytes[bytes.length-1] : Math.max(0, Math.min(36, parseInt(forced,10)));
+    const amountLE = readU64LE(bytes, 1);
+    const human = formatHuman(amountLE, decimals);
+
+    let lines = [];
+    lines.push(`Bytes (${bytes.length}): ` + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(' '));
+    lines.push(`Opcode (byte 0): ${opcode} ${opcode===12 ? '✅ (TransferChecked)' : '⚠️ not 12; ensure this is TransferChecked data'}`);
+    lines.push(`Amount (u64 LE @ [1..8]): ${amountLE} raw units`);
+    lines.push(`Decimals: ${decimals}`);
+    lines.push(`Human amount: ${human}`);
+    out.textContent = lines.join('\\n');
+  }catch(e){
+    out.innerHTML = '<span class="err">Error:</span> ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
