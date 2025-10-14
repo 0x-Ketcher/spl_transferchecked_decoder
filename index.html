@@ -1,36 +1,52 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SPL Token TransferChecked Decoder (offline)</title>
+<title>SPL Token TransferChecked Decoder</title>
 <style>
-  body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; line-height: 1.4; }
-  h1 { font-size: 20px; margin-bottom: 8px; }
-  .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; max-width: 860px; }
-  label { font-weight: 600; }
-  textarea, input { width: 100%; padding: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 14px; }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .muted { color: #6b7280; font-size: 13px; }
-  .out { background: #f9fafb; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
-  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eef2ff; color:#3730a3; font-size: 12px; margin-left: 6px; }
-  .ok { color: #065f46; }
-  .err { color: #991b1b; }
-  button { padding: 10px 14px; border-radius: 10px; border: 1px solid #e5e7eb; background: #111827; color: white; cursor: pointer; }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .grid { display: grid; gap: 10px; }
-  .small { font-size: 12px; }
+  :root {
+    --bg: #0b1020;
+    --card: #11172a;
+    --muted: #9aa3b2;
+    --text: #e9eef5;
+    --accent: #4f46e5;
+    --ok: #22c55e;
+    --err: #ef4444;
+  }
+  html, body { background: var(--bg); color: var(--text); }
+  body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; margin: 28px; line-height: 1.45; }
+  h1 { font-size: 24px; margin-bottom: 10px; letter-spacing: 0.2px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .card { border: 1px solid #20263a; background: var(--card); border-radius: 14px; padding: 16px; max-width: 960px; }
+  label { font-weight: 600; font-size: 13px; }
+  textarea, input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #27304a; background:#0d1427; color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 14px; }
+  textarea::placeholder, input::placeholder { color: #58627a; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end; }
+  button { padding: 12px 16px; border-radius: 10px; border: 1px solid #3b4a7a; background: #1a2446; color: #e6ebf5; cursor: pointer; font-weight: 600; }
+  button:hover { background: #22305b; }
+  .out { background: #0d1427; padding: 12px; border-radius: 12px; white-space: pre-wrap; border: 1px solid #27304a; }
+  .grid { display: grid; gap: 14px; }
+  .human-wrap { display: flex; gap: 12px; align-items: center; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #33406a; color:#c7d2fe; background: #1b2140; }
+  .human-box { border:1px solid #2f5138; background: #0d1b12; color:#b7ffca; padding:14px; border-radius:12px; }
+  .human-big { font-size: 28px; font-weight: 800; letter-spacing: 0.2px; }
+  .human-sub { color:#8de7a8; font-size:12px; }
+  .kv { display:grid; grid-template-columns: 180px 1fr; gap: 8px 14px; }
+  .kv div { padding:2px 0; border-bottom: 1px dashed #243050; }
+  .ok { color: var(--ok); }
+  .err { color: var(--err); }
+  .foot { margin-top: 8px; font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
-  <h1>SPL Token <code>TransferChecked</code> Decoder <span class="pill">offline</span></h1>
-  <p class="muted">Paste the instruction data bytes (hex). This decodes <code>TransferChecked</code> (opcode = 12) into raw amount, decimals, and human amount.</p>
+  <h1>SPL Token <code>TransferChecked</code> Decoder</h1>
+  <p class="muted">Paste the instruction data bytes (hex). This decodes <code>TransferChecked</code> (opcode = 12) into raw amount, decimals, and a formatted human amount.</p>
   <div class="card grid">
     <div>
       <label for="hex">Instruction Data (hex)</label>
       <textarea id="hex" rows="3" placeholder="e.g. 0c40420f000000000006 or 0c 40 42 0f 00 00 00 00 00 00 06"></textarea>
-      <div class="small muted">Tips: you can include or omit <code>0x</code> and spaces.</div>
+      <div class="muted">Tip: you can include or omit <code>0x</code> and spaces.</div>
     </div>
     <div class="row">
       <div>
@@ -38,18 +54,28 @@
         <input id="forceDecimals" type="number" min="0" max="36" placeholder="Leave empty to use last byte from data" />
       </div>
       <div>
-        <label>&nbsp;</label><br/>
         <button id="decode">Decode</button>
       </div>
     </div>
-    <div id="result" class="out"></div>
+
+    <div id="human" class="human-box" style="display:none;">
+      <div class="human-wrap">
+        <div class="badge">Human amount</div>
+      </div>
+      <div class="human-big" id="humanBig"></div>
+      <div class="human-sub" id="humanSub"></div>
+    </div>
+
+    <div id="kv" class="out" style="display:none;"></div>
+    <div id="err" class="out err" style="display:none;"></div>
   </div>
+
+  <div class="foot">Made for quick decode of SPL Token <code>TransferChecked</code>. No data leaves your browser.</div>
 
 <script>
 function cleanHex(s){
   return (s||"").toLowerCase().replace(/0x/g,'').replace(/[^0-9a-f]/g,'');
 }
-
 function hexToBytes(hex) {
   if (hex.length % 2 !== 0) throw new Error("Hex length must be even (got "+hex.length+")");
   const bytes = new Uint8Array(hex.length / 2);
@@ -58,7 +84,6 @@ function hexToBytes(hex) {
   }
   return bytes;
 }
-
 function readU64LE(bytes, offset){
   if (offset + 8 > bytes.length) throw new Error("Not enough bytes to read u64");
   let n = 0n;
@@ -67,19 +92,39 @@ function readU64LE(bytes, offset){
   }
   return n;
 }
-
 function pow10(n){ let r=1n; for(let i=0;i<n;i++) r*=10n; return r; }
-
-function formatHuman(n, decimals){
+function humanAsStrings(n, decimals){
+  // returns [trimmed, fixed] strings
   const scale = pow10(decimals);
   const whole = n / scale;
   const frac = n % scale;
-  const fracStr = frac.toString().padStart(decimals, '0').replace(/0+$/,'');
-  return fracStr.length ? `${whole}.${fracStr}` : whole.toString();
+  let fixed = whole.toString();
+  if (decimals > 0){
+    fixed += "." + frac.toString().padStart(decimals, '0');
+  }
+  // trimmed version removes trailing zeros in fractional part
+  let trimmed = fixed;
+  if (decimals > 0) {
+    trimmed = fixed.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+  }
+  return [trimmed, fixed];
+}
+function addCommasNumericString(s){
+  const parts = s.split('.');
+  const intPart = parts[0];
+  const fracPart = parts[1] || '';
+  const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return fracPart ? withCommas + '.' + fracPart : withCommas;
 }
 
 document.getElementById('decode').addEventListener('click', () => {
-  const out = document.getElementById('result');
+  const err = document.getElementById('err');
+  const kv = document.getElementById('kv');
+  const humanBox = document.getElementById('human');
+  const humanBig = document.getElementById('humanBig');
+  const humanSub = document.getElementById('humanSub');
+  err.style.display = 'none'; kv.style.display = 'none'; humanBox.style.display = 'none';
+
   try{
     const cleaned = cleanHex(document.getElementById('hex').value);
     if (!cleaned) throw new Error("Paste hex data first.");
@@ -89,17 +134,24 @@ document.getElementById('decode').addEventListener('click', () => {
     const forced = document.getElementById('forceDecimals').value;
     const decimals = forced === "" ? bytes[bytes.length-1] : Math.max(0, Math.min(36, parseInt(forced,10)));
     const amountLE = readU64LE(bytes, 1);
-    const human = formatHuman(amountLE, decimals);
+    const [humanTrim, humanFixed] = humanAsStrings(amountLE, decimals);
 
-    let lines = [];
-    lines.push(`Bytes (${bytes.length}): ` + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(' '));
-    lines.push(`Opcode (byte 0): ${opcode} ${opcode===12 ? '✅ (TransferChecked)' : '⚠️ not 12; ensure this is TransferChecked data'}`);
-    lines.push(`Amount (u64 LE @ [1..8]): ${amountLE} raw units`);
-    lines.push(`Decimals: ${decimals}`);
-    lines.push(`Human amount: ${human}`);
-    out.textContent = lines.join('\\n');
+    // Human standout
+    humanBig.textContent = addCommasNumericString(humanTrim);
+    humanSub.textContent = "Fixed ("+decimals+" dp): " + addCommasNumericString(humanFixed);
+    humanBox.style.display = 'block';
+
+    // Key values
+    const lines = [];
+    lines.push("Bytes ("+bytes.length+"): " + Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join(' '));
+    lines.push("Opcode (byte 0): " + opcode + (opcode===12 ? " ✅ (TransferChecked)" : " ⚠️ not 12; ensure this is TransferChecked data"));
+    lines.push("Amount (u64 LE @ [1..8]): " + amountLE + " raw units");
+    lines.push("Decimals: " + decimals);
+    kv.textContent = lines.join("\n");
+    kv.style.display = 'block';
   }catch(e){
-    out.innerHTML = '<span class="err">Error:</span> ' + e.message;
+    err.textContent = "Error: " + e.message;
+    err.style.display = 'block';
   }
 });
 </script>
